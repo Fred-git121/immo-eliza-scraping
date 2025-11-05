@@ -14,15 +14,16 @@ headers = get_random_headers()
 
 # The columns that will be kept in the final file
 KEEP = {
+    "url",
     "Property ID",
     "city-line",
     "Price",
     "State of the property",
     "Availability",
     "Number of bedrooms",
-    "Livable surface"
+    "Livable surface",
     "Furnished",
-    "Surface of living room"
+    "Surface of living room",
     "Attic",
     "Garage",
     "Number of garages",
@@ -56,11 +57,10 @@ with open(input_csv, "r", encoding="utf-8") as f:
 # Scrape every url
 all_specs = []
 for url in urls:
-    soup = BeautifulSoup(requests.get(url,headers=headers).text, "html.parser")
-    specs = {}
-
+    specs = {"url": url, "Property ID": url.rstrip("/").rsplit("/", 1)[-1]}
     # Property ID = everything after the last "/"
-    specs["Property ID"] = url.rstrip("/").rsplit("/", 1)[-1]
+    soup = BeautifulSoup(requests.get(url,headers=headers).text, "html.parser")
+
 
     for li in soup.select("ul li"):
         txt = li.get_text(strip=True)
@@ -75,7 +75,6 @@ for url in urls:
 
     all_specs.append(specs)
 
-    print(url)
     for k, v in specs.items():
         if k in KEEP:
             print(f"{k}: {v}")
@@ -86,6 +85,7 @@ with open("immovlan_final_file.csv", "w", newline="", encoding="utf-8") as f:
         for k, v in specs.items():
             if k in KEEP:
                 writer.writerow([k, v])
+        writer.writerow([])
 
 # # One data-frame with every property
 # df = pd.DataFrame(all_specs).reindex(columns=KEEP, fill_value="")
