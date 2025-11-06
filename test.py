@@ -13,14 +13,20 @@ def ua(): return {"User-Agent": random.choice(user_agents)}
 
 BASE = "https://www.immovlan.be/en/real-estate"
 
-# --------------- 1. FILTER PARAMS -----------------------------
-SALE_SUBS = {
-    "house": {"transactiontypes": "for-sale", "propertytypes": "house"},
-    "apartment": {"transactiontypes": "for-sale", "propertytypes": "apartment"},
-    "land": {"transactiontypes": "for-sale", "propertytypes": "land"},
-    "business": {"transactiontypes": "for-sale", "propertytypes": "business"},
-    "investment": {"transactiontypes": "for-sale", "propertytypes": "investment-property"},
-    "garage": {"transactiontypes": "for-sale", "propertytypes": "garage"}
+# --------------- 1. PARAMS -----------------------------
+
+SALE_REGIONS = {
+    "Brussels": {"transactiontypes": "for-sale", "provinces": "brussels"},
+    "Hainaut": {"transactiontypes": "for-sale", "provinces": "hainaut"},
+    "East Flanders": {"transactiontypes": "for-sale", "provinces": "east-flanders"},
+    "Luxembourg": {"transactiontypes": "for-sale", "provinces": "luxembourg"},
+    "Antwerp": {"transactiontypes": "for-sale", "provinces": "antwerp"},
+    "Brabant Wallon": {"transactiontypes": "for-sale", "provinces": "brabant-wallon"},
+    "Liège": {"transactiontypes": "for-sale", "provinces": "liege"},
+    "Namur": {"transactiontypes": "for-sale", "provinces": "namur"},
+    "West Flanders": {"transactiontypes": "for-sale", "provinces": "west-flanders"},
+    "Vlaams Brabant": {"transactiontypes": "for-sale", "provinces": "vlaams-brabant"},
+    "Limburg": {"transactiontypes": "for-sale", "provinces": "limburg"}
 }
 
 # --------------- 2. GRAB ONE PAGE --------------------------
@@ -34,11 +40,11 @@ def get_page(page, params_dict, label):
     print(f"{label} page {page} → {len(links)} links")
     return links
 
-# --------------- 3. SCRAPE WRAPPER -------------------------
+# --------------- 3. SCRAPER -------------------------
 MAX_SITE_PAGES = 50
 
 def scrape_category(params_dict, label):
-    """Scrape every page for one category; returns list[(url,label)]."""
+    # Scrape every page for one category; returns list[(url,label)]
     all_links = []
     for p in range(1, MAX_SITE_PAGES + 1):
         batch = get_page(p, params_dict, label)
@@ -48,16 +54,15 @@ def scrape_category(params_dict, label):
     print(f"{label} pages scraped: {len(all_links)} links")
     return all_links
 
-# --------------- 4. RUN EVERYTHING (sequential, category-by-category) ---
+# --------------- 4. RUN EVERYTHING (category-by-category) -------
 all_links = []
 
 # 4a. sale sub-categories in the required order
-for label, params in SALE_SUBS.items():          # dict keeps insertion order in py≥3.7
+for label, params in SALE_REGIONS.items():          # dict keeps insertion order in py≥3.7
     print(f"\n===== SCRAPING {label.upper()} =====")
     all_links.extend(scrape_category(params, label))
 
 # --------------- 5. SAVE -----------------------------------
-df = pd.DataFrame(all_links, columns=["url", "transaction_type"])
-df.drop_duplicates(subset="url")
+df = pd.DataFrame(all_links, columns=["url", "province"]).drop_duplicates(subset="url")
 df.to_csv("immovlan_sale.csv", index=False)
 print(f"\nTotal unique links collected: {len(df)}")
