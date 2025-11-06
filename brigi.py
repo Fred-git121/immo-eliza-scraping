@@ -91,7 +91,7 @@ def expand_project_selenium(url, driver):
     return urls
 
 
-driver = webdriver.Chrome()
+driver = webdriver.Firefox()
 driver.get("https://immovlan.be/")
 handle_cookie(driver)
 choose_language(driver)
