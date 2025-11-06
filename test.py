@@ -16,7 +16,6 @@ headers = get_random_headers()
 KEEP = {
     "url",
     "Property ID",
-    "city-line",
     "Price",
     "State of the property",
     "Availability",
@@ -87,6 +86,6 @@ with open("immovlan_final_file.csv", "w", newline="", encoding="utf-8") as f:
                 writer.writerow([k, v])
         writer.writerow([])
 
-# # One data-frame with every property
-# df = pd.DataFrame(all_specs).reindex(columns=KEEP, fill_value="")
-# df.to_csv("immovlan_final_file.csv", index=False, header=True)
+# One data-frame with every property
+df = pd.DataFrame(all_specs).reindex(columns=KEEP, fill_value="")
+df.to_csv("immovlan_final_file_df.csv", index=False, header=True)
