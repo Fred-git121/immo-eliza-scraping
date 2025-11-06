@@ -4,10 +4,10 @@ import re  # For regular expressions
 import csv  # For reading/writing CSV files
 import random  # For selecting random values (used for user-agent rotation)
 import requests  # For sending HTTP requests
+import pandas
 
 #libraries for parsing HTML and automating browsers
 from bs4 import BeautifulSoup  # For parsing HTML content
-from selenium import webdriver  # For controlling a browser programmatically
 from selenium.webdriver.common.by import By  # For locating elements in Selenium
 from selenium.webdriver.support.ui import WebDriverWait  # For waiting for elements to appear
 from selenium.webdriver.support import expected_conditions as EC  # For waiting conditions in Selenium
@@ -71,61 +71,59 @@ def handle_cookie(driver):
         # If the button is not found, ignore
         pass
 
+BASE = "https://www.immovlan.be/en/real-estate"
 # Function to scrape all property URLs
-def scrape_property_urls():
-    all_property_urls = set()
+SALE_REGIONS = {
+    "Brussels": {"transactiontypes": "for-sale", "provinces": "brussels"},
+    "Hainaut": {"transactiontypes": "for-sale", "provinces": "hainaut"},
+    "East Flanders": {"transactiontypes": "for-sale", "provinces": "east-flanders"},
+    "Luxembourg": {"transactiontypes": "for-sale", "provinces": "luxembourg"},
+    "Antwerp": {"transactiontypes": "for-sale", "provinces": "antwerp"},
+    "Brabant Wallon": {"transactiontypes": "for-sale", "provinces": "brabant-wallon"},
+    "Liège": {"transactiontypes": "for-sale", "provinces": "liege"},
+    "Namur": {"transactiontypes": "for-sale", "provinces": "namur"},
+    "West Flanders": {"transactiontypes": "for-sale", "provinces": "west-flanders"},
+    "Vlaams Brabant": {"transactiontypes": "for-sale", "provinces": "vlaams-brabant"},
+    "Limburg": {"transactiontypes": "for-sale", "provinces": "limburg"}
+}
 
-    for page_num in range(1, 51):
-        url = f"https://immovlan.be/en/real-estate?isnewconstruction=only&page={page_num}&noindex=1"
-        print(f"Fetching page {page_num} ...")
+# --------------- 2. GRAB ONE PAGE --------------------------
+def get_page(page, params_dict, label):
+    params = {**params_dict, "page": page}
+    r = requests.get(BASE, params=params, headers=get_random_headers(), timeout=10)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "lxml")
+    links = [(a["href"], label) for card in soup.select("article.list-view-item")
+             for a in [card.select_one("h2.card-title a")] if a]
+    print(f"{label} page {page} → {len(links)} links")
+    return links
 
-        try:
-            r = requests.get(url, headers=get_random_headers(), timeout=15)
-            r.raise_for_status()
-        except Exception as e:
-            print(f"Failed to fetch {url}: {e}")
-            continue
+# --------------- 3. SCRAPER -------------------------
+MAX_SITE_PAGES = 50
 
-        soup = BeautifulSoup(r.text, "html.parser")
+def scrape_category(params_dict, label):
+    # Scrape every page for one category; returns list[(url,label)]
+    all_links = []
+    for p in range(1, MAX_SITE_PAGES + 1):
+        batch = get_page(p, params_dict, label)
+        if not batch:          # empty page → we reached the end
+            break
+        all_links.extend(batch)
+    print(f"{label} pages scraped: {len(all_links)} links")
+    return all_links
 
-        # Find property links
-        for a in soup.select("a[href*='/detail/'], a[href*='/projectdetail/']"):
-            href = a.get("href")
-            if not href:
-                continue
+# --------------- 4. RUN EVERYTHING (category-by-category) -------
+all_links = []
 
-            if href.startswith("/"):
-                href = "https://immovlan.be" + href
+# 4a. sale sub-categories in the required order
+for label, params in SALE_REGIONS.items():          # dict keeps insertion order in py≥3.7
+    print(f"\n===== SCRAPING {label.upper()} =====")
+    all_links.extend(scrape_category(params, label))
 
-            if "/projectdetail/" in href:
-                try:
-                    proj = requests.get(href, headers=get_random_headers(), timeout=10)
-                    proj.raise_for_status()
-                    project_soup = BeautifulSoup(proj.text, "html.parser")
-
-                    for link in project_soup.select("a[href*='/en/detail/']"):
-                        prop_url = link.get("href")
-                        if prop_url:
-                            if prop_url.startswith("/"):
-                                prop_url = "https://immovlan.be" + prop_url
-                            all_property_urls.add(prop_url)
-                except Exception as e:
-                    print(f"Error fetching project {href}: {e}")
-                    continue
-            else:
-                all_property_urls.add(href)
-
-        print(f"Page {page_num}: {len(all_property_urls)} total properties")
-        time.sleep(random.uniform(0.5, 1.5))  # be polite
-
-    return list(all_property_urls)
-
-    # Save all scraped URLs to CSV
-    with open("property_urls.csv", "w", encoding="utf-8") as f:
-        for url in sorted(all_property_urls):
-            f.write(url + "\n")
-    print(f"Saved {len(all_property_urls)} property URLs")
-    return list(all_property_urls)
+# --------------- 5. SAVE -----------------------------------
+df = pd.Dataframe(all_links, columns=["url", "province"]).drop_duplicates(subset="url")
+df.to_csv("immovlan_sale.csv", index=False)
+print(f"\nTotal unique links collected: {len(df)}")
 
 # Function to scrape property details from a single property URL using BeautifulSoup
 def scrape_property_details(url):
@@ -156,7 +154,7 @@ def scrape_property_details(url):
 # Main execution
 if __name__ == "__main__":
     # Step 1: Scrape all property URLs
-    property_urls = scrape_property_urls()
+    property_urls = scrape_category()
 
     # Step 2: Scrape property details concurrently using ThreadPoolExecutor
     all_specs = []    #it will store the results scraped
