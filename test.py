@@ -1,8 +1,5 @@
-import time
-import requests, random, pandas as pd
+import time, random, pandas as pd, requests
 from bs4 import BeautifulSoup
-from concurrent.futures import ThreadPoolExecutor as Pool
-
 
 user_agents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
@@ -14,75 +11,53 @@ user_agents = [
 # Using a random UA in user_agents each time
 def ua(): return {"User-Agent": random.choice(user_agents)}
 
-# URL details
 BASE = "https://www.immovlan.be/en/real-estate"
-PARAMS = {"transactiontypes": "for-sale,in-public-sale"}
 
-# ---------- 1. grab one page ----------
+# --------------- 1. FILTER PARAMS -----------------------------
+SALE_SUBS = {
+    "house": {"transactiontypes": "for-sale", "propertytypes": "house"},
+    "apartment": {"transactiontypes": "for-sale", "propertytypes": "apartment"},
+    "land": {"transactiontypes": "for-sale", "propertytypes": "land"},
+    "business": {"transactiontypes": "for-sale", "propertytypes": "business"},
+    "investment": {"transactiontypes": "for-sale", "propertytypes": "investment-property"},
+    "garage": {"transactiontypes": "for-sale", "propertytypes": "garage"}
+}
 
-def get_page(page):
-    resp = requests.get(BASE, params={**PARAMS, "page": page},
-                       headers=ua(), timeout=10)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "lxml")          # lxml is faster
-    links = []
-    for card in soup.find_all("article", class_="list-view-item"):
-        a = card.select_one("h2.card-title a")
-        if a:
-            url = a["href"]
-            links.append(url)
-            print(url)
-    print(f"page {page} → {len(links)} links")
+# --------------- 2. GRAB ONE PAGE --------------------------
+def get_page(page, params_dict, label):
+    params = {**params_dict, "page": page}
+    r = requests.get(BASE, params=params, headers=ua(), timeout=10)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "lxml")
+    links = [(a["href"], label) for card in soup.select("article.list-view-item")
+             for a in [card.select_one("h2.card-title a")] if a]
+    print(f"{label} page {page} → {len(links)} links")
     return links
 
-# Discover pages until page 50
+# --------------- 3. SCRAPE WRAPPER -------------------------
 MAX_SITE_PAGES = 50
-page = 1
-while page < MAX_SITE_PAGES:
-    if not get_page(page):
-        page -= 1
-        break
-    page += 1
-print(f"total pages scraped: {page} (capped at {MAX_SITE_PAGES})")
 
-# ---------- 3. fetch 2..last in parallel ----------
-with Pool(max_workers=20) as pool:
-    pages = pool.map(get_page, range(1, page + 1))
+def scrape_category(params_dict, label):
+    """Scrape every page for one category; returns list[(url,label)]."""
+    all_links = []
+    for p in range(1, MAX_SITE_PAGES + 1):
+        batch = get_page(p, params_dict, label)
+        if not batch:          # empty page → we reached the end
+            break
+        all_links.extend(batch)
+    print(f"{label} pages scraped: {len(all_links)} links")
+    return all_links
 
-all_links = [url for page in pages for url in page]
-print(f"Total links collected: {len(all_links)}")
+# --------------- 4. RUN EVERYTHING (sequential, category-by-category) ---
+all_links = []
 
-pd.DataFrame({"url":all_links}).to_csv("immovlan_1000.csv", index=False)
-# # ---- Iterating through the urls on a page ----
-# # List page
-# response = requests.get(BASE, params=PARAMS, headers=ua())
-# response.raise_for_status()
-# soup = BeautifulSoup(response.text, 'html.parser')
-#
-# listings = []
-# page = 1
-# while True:
-#     print(f"--- scraping page {page} ---")
-#     resp = requests.get(BASE, params={**PARAMS, "page": page}, headers=ua(), timeout=10)
-#     resp.raise_for_status()
-#     soup = BeautifulSoup(resp.text, "html.parser")
-#
-#     cards = soup.find_all("article", class_="list-view-item")
-#     if not cards:                       # safety exit
-#         break
-#
-#     for card in cards:
-#         link = card.select_one("h2.card-title a")
-#         if link:
-#             url = link["href"]
-#             listings.append({"url": url})
-#             print(url)
-#
-#     # Stop when no "text" button / link
-#     next_link = soup.select_one('a[rel="next"], a:-soup-contains("Next"), a[aria-label="Next"]')
-#     if next_link is None:
-#         break
-#
-#     page += 1
-#     time.sleep(random.uniform(0.8, 1.5))
-# print(f"{len(listings)} properties found on {page} pages.")
+# 4a. sale sub-categories in the required order
+for label, params in SALE_SUBS.items():          # dict keeps insertion order in py≥3.7
+    print(f"\n===== SCRAPING {label.upper()} =====")
+    all_links.extend(scrape_category(params, label))
+
+# --------------- 5. SAVE -----------------------------------
+df = pd.DataFrame(all_links, columns=["url", "transaction_type"])
+df.drop_duplicates(subset="url")
+df.to_csv("immovlan_sale.csv", index=False)
+print(f"\nTotal unique links collected: {len(df)}")
