@@ -13,7 +13,7 @@ def get_random_headers():
 headers = get_random_headers()
 
 # The columns that will be kept in the final file
-KEEP = {
+KEEP = [
     "url",
     "Property ID",
     "Price",
@@ -41,7 +41,7 @@ KEEP = {
     "Surface terrace",
     "Total land surface",
     "Swimming pool",
-}
+]
 
 
 # Read the list
@@ -63,29 +63,23 @@ for url in urls:
 
     for li in soup.select("ul li"):
         txt = li.get_text(strip=True)
-        m = re.match(r"^(.+?):\s*(.+)$", txt)
-        if m:
-            specs[m.group(1)] = m.group(2)
+        price_table = re.match(r"^(.+?):\s*(.+)$", txt)
+        if price_table:
+            price_header = price_table.group(1)
+            price_value = price_table.group(2)
+            specs[price_header] = price_value
 
     for h4 in soup.select("h4"):
         p = h4.find_next("p")
         if p:
-            specs[h4.get_text(strip=True)] = p.get_text(strip=True)
+            if h4.get_text(strip=True) in KEEP:
+                specs[h4.get_text(strip=True)] = p.get_text(strip=True)
 
     all_specs.append(specs)
 
-    for k, v in specs.items():
-        if k in KEEP:
-            print(f"{k}: {v}")
+    #for k, v in specs.items():
+    #    if k in KEEP:
+    #        print(f"{k}: {v}")
 
-with open("immovlan_final_file.csv", "w", newline="", encoding="utf-8") as f:
-    writer = csv.writer(f)
-    for specs in all_specs:
-        for k, v in specs.items():
-            if k in KEEP:
-                writer.writerow([k, v])
-        writer.writerow([])
-
-# One data-frame with every property
-df = pd.DataFrame(all_specs).reindex(columns=KEEP, fill_value="")
-df.to_csv("immovlan_final_file_df.csv", index=False, header=True)
+df = pd.DataFrame(all_specs)
+df.to_csv("immovlan_final_file.csv", index=False)
