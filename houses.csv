@@ -1,4 +1,5 @@
 Property ID,Locality name,Postal code,Price,Type of property,Subtype of property,Number_of_rooms,Living area,Equipped kitchen,Furnished,Terrace,Garden,Number of facades,Swimming pool,State of building,Build Year,Number of bedrooms,Livable surface,Number of bathrooms,Surface garden
-VBD44760,Apartment for rent - Brussels VBD44760,1000 Brussels,1 350 €,Apartment for rent - Brussels VBD44760,Apartment for rent - Brussels VBD44760,2,15 m²,Fully equipped,No,Yes,No,N/A,No,New,2025,2,93 m²,1,N/A
-VBD44914,Apartment for rent - Brussels VBD44914,N/A,1 300 €,Apartment for rent - Brussels VBD44914,Apartment for rent - Brussels VBD44914,2,12 m²,Super equipped,No,Yes,No,4,No,New,N/A,2,92 m²,1,N/A
-VBD45067,Apartment for rent - Brussels VBD45067,1000 Brussels,1 238 €,Apartment for rent - Brussels VBD45067,Apartment for rent - Brussels VBD45067,2,11 m²,N/A,No,No,Yes,2,No,New,2022,2,83 m²,2,N/A
+VWD15254,Apartment for sale - Sint-Gillis VWD15254,1060 Sint-Gillis,475 000 €,Apartment for sale - Sint-Gillis VWD15254,Apartment for sale - Sint-Gillis VWD15254,2,133 m²,,,Yes,,,,Normal,1953,2,133 m²,1,
+RWC41104,Apartment for sale - Brussels RWC41104,1000 Brussels,225 000 €,Apartment for sale - Brussels RWC41104,Apartment for sale - Brussels RWC41104,1,76 m²,,,,,,,Normal,2015,1,76 m²,1,
+VBD48547,Villa for sale - Kraainem VBD48547,1950 Kraainem,1 600 000 €,Villa for sale - Kraainem VBD48547,Villa for sale - Kraainem VBD48547,6,20 m²,,No,Yes,Yes,4,Yes,To renovate,1955,6,650 m²,4,3300 m²
+RBU47917,Villa for sale - Leefdaal RBU47917,3061 Leefdaal,995 000 €,Villa for sale - Leefdaal RBU47917,Villa for sale - Leefdaal RBU47917,4,17 m²,,,Yes,Yes,4,,,2006,4,274 m²,2,
