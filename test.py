@@ -58,7 +58,7 @@ def scrape_category(params_dict, label):
 all_links = []
 
 # 4a. sale sub-categories in the required order
-for label, params in SALE_REGIONS.items():          # dict keeps insertion order in py≥3.7
+for label, params in SALE_REGIONS.items():
     print(f"\n===== SCRAPING {label.upper()} =====")
     all_links.extend(scrape_category(params, label))
 
