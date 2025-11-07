@@ -56,7 +56,7 @@ SALE_REGIONS = {
 }
 
 # The columns that will be kept in the final file
-KEEP = [
+COLUMNS_TO_KEEP = [
     "url",
     "Property ID",
     "Price",
