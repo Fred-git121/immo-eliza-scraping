@@ -64,5 +64,6 @@ for label, params in SALE_REGIONS.items():
 
 # --------------- 5. SAVE -----------------------------------
 df = pd.DataFrame(all_links, columns=["url", "province"]).drop_duplicates(subset="url")
+df = df[["url"]]
 df.to_csv("immovlan_sale.csv", index=False)
 print(f"\nTotal unique links collected: {len(df)}")
