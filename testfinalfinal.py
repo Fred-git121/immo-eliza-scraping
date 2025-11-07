@@ -4,7 +4,7 @@ import re  # For regular expressions
 import csv  # For reading/writing CSV files
 import random  # For selecting random values (used for user-agent rotation)
 import requests  # For sending HTTP requests
-import pandas
+import pandas as pd
 
 #libraries for parsing HTML and automating browsers
 from bs4 import BeautifulSoup  # For parsing HTML content
@@ -18,16 +18,53 @@ from concurrent.futures import ThreadPoolExecutor, as_completed  # For multithre
 # Maximum number of threads for scraping property details concurrently
 MAX_THREADS = 5
 
-# Define which property details we want to keep when saving CSV
-KEEP = {
+def get_random_headers():
+    user_agents =[
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15'
+    ]
+    return {"User-Agent": random.choice(user_agents)}
+headers = get_random_headers()
+
+def handle_cookie(driver):
+    try:
+        # Wait until the cookie accept button appears (max 3 seconds)
+        button = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, "didomi-notice-agree-button")))
+        # Click the button
+        driver.execute_script("arguments[0].click();", button)
+        time.sleep(1)  # Small delay after clicking
+    except:
+        # If the button is not found, ignore
+        pass
+BASE = "https://www.immovlan.be/en/real-estate"
+
+SALE_REGIONS = {
+    "Brussels": {"transactiontypes": "for-sale", "provinces": "brussels"},
+    "Hainaut": {"transactiontypes": "for-sale", "provinces": "hainaut"},
+    "East Flanders": {"transactiontypes": "for-sale", "provinces": "east-flanders"},
+    "Luxembourg": {"transactiontypes": "for-sale", "provinces": "luxembourg"},
+    "Antwerp": {"transactiontypes": "for-sale", "provinces": "antwerp"},
+    "Brabant Wallon": {"transactiontypes": "for-sale", "provinces": "brabant-wallon"},
+    "Liège": {"transactiontypes": "for-sale", "provinces": "liege"},
+    "Namur": {"transactiontypes": "for-sale", "provinces": "namur"},
+    "West Flanders": {"transactiontypes": "for-sale", "provinces": "west-flanders"},
+    "Vlaams Brabant": {"transactiontypes": "for-sale", "provinces": "vlaams-brabant"},
+    "Limburg": {"transactiontypes": "for-sale", "provinces": "limburg"}
+}
+
+# The columns that will be kept in the final file
+KEEP = [
+    "url",
     "Property ID",
-    "city-line",
     "Price",
     "State of the property",
     "Availability",
     "Number of bedrooms",
     "Livable surface",
-    "Furnished", 
+    "Furnished",
     "Surface of living room",
     "Attic",
     "Garage",
@@ -47,45 +84,7 @@ KEEP = {
     "Surface terrace",
     "Total land surface",
     "Swimming pool",
-}
-
-# Function to return random headers
-def get_random_headers():
-    user_agents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15',
-    ]
-    return {"User-Agent": random.choice(user_agents)}
-
-# Function to handle cookie popup on the website using Selenium
-def handle_cookie(driver):
-    try:
-        # Wait until the cookie accept button appears (max 3 seconds)
-        button = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, "didomi-notice-agree-button")))
-        # Click the button
-        driver.execute_script("arguments[0].click();", button)
-        time.sleep(1)  # Small delay after clicking
-    except:
-        # If the button is not found, ignore
-        pass
-
-BASE = "https://www.immovlan.be/en/real-estate"
-# Function to scrape all property URLs
-SALE_REGIONS = {
-    "Brussels": {"transactiontypes": "for-sale", "provinces": "brussels"},
-    "Hainaut": {"transactiontypes": "for-sale", "provinces": "hainaut"},
-    "East Flanders": {"transactiontypes": "for-sale", "provinces": "east-flanders"},
-    "Luxembourg": {"transactiontypes": "for-sale", "provinces": "luxembourg"},
-    "Antwerp": {"transactiontypes": "for-sale", "provinces": "antwerp"},
-    "Brabant Wallon": {"transactiontypes": "for-sale", "provinces": "brabant-wallon"},
-    "Liège": {"transactiontypes": "for-sale", "provinces": "liege"},
-    "Namur": {"transactiontypes": "for-sale", "provinces": "namur"},
-    "West Flanders": {"transactiontypes": "for-sale", "provinces": "west-flanders"},
-    "Vlaams Brabant": {"transactiontypes": "for-sale", "provinces": "vlaams-brabant"},
-    "Limburg": {"transactiontypes": "for-sale", "provinces": "limburg"}
-}
+]
 
 # --------------- 2. GRAB ONE PAGE --------------------------
 def get_page(page, params_dict, label):
@@ -121,12 +120,14 @@ for label, params in SALE_REGIONS.items():          # dict keeps insertion order
     all_links.extend(scrape_category(params, label))
 
 # --------------- 5. SAVE -----------------------------------
-df = pd.Dataframe(all_links, columns=["url", "province"]).drop_duplicates(subset="url")
+df = pd.DataFrame(all_links, columns=["url", "province"]).drop_duplicates(subset="url")
 df.to_csv("immovlan_sale.csv", index=False)
 print(f"\nTotal unique links collected: {len(df)}")
 
 # Function to scrape property details from a single property URL using BeautifulSoup
 def scrape_property_details(url):
+    if url.startswith("/"):
+        url = "https://www.immovlan.be" + url
     headers = get_random_headers()  # Use random headers for request
     specs = {}  # Dictionary to store property details
     try:
@@ -154,7 +155,8 @@ def scrape_property_details(url):
 # Main execution
 if __name__ == "__main__":
     # Step 1: Scrape all property URLs
-    property_urls = scrape_category()
+    property_urls = [url for url, _ in all_links]
+
 
     # Step 2: Scrape property details concurrently using ThreadPoolExecutor
     all_specs = []    #it will store the results scraped
