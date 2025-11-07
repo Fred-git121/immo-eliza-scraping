@@ -266,7 +266,7 @@ if __name__ == "__main__":
     columns_to_keep = [col for col in KEEP if col in df_final.columns]
     df_final = df_final[columns_to_keep]
     
-    df_final.to_csv("immovlan_final_file.csv", index=False, encoding="utf-8")
+    df_final.to_csv("./data/raw/immovlan_final_file.csv", index=False, encoding="utf-8")
     
     print(f"\n{'='*60}")
     print(f"SCRAPING COMPLETE!")
