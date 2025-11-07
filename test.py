@@ -56,7 +56,7 @@ COLUMNS_TO_KEEP = [
 # 1. Read the list URLS from a CSV file
 # Each line in the CSV file should contain one URL
 # ---------------------------------------------------------
-input_csv_file = "test_urls.csv"
+input_csv_file = "immovlan_sale.csv"
 
 property_urls = []
 with open(input_csv_file, "r", encoding="utf-8") as file:
@@ -109,6 +109,6 @@ for property_url in tqdm(property_urls, desc="Scraping"):
 # ---------------------------------------------------------
 # 3. Convert collected data into a DataFrame and export CSV
 # ---------------------------------------------------------
-output_csv_file = "immovlan_test_file.csv"
+output_csv_file = "immovlan_final_file.csv"
 df = pd.DataFrame(all_property_data)
 df.to_csv(output_csv_file, index=False)
