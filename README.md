@@ -1,7 +1,7 @@
 # 🏠 Immo Eliza - Data Collection
 
 A data collection project for **Immo Eliza**, a Belgian real estate company developing a **machine learning model** to predict property prices.
-This stage focuses on **scraping property data** from [Immoweb](https://www.immovlan.be/en) and building a clean, structured dataset for future analysis.
+This stage focuses on **scraping property data** from (https://www.immovlan.be/en) and building a clean, structured dataset for future analysis.
 
 ---
 
