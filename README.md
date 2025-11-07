@@ -98,7 +98,7 @@ immo-eliza-scraping/
 ## 👥 Contributors
 
 * [Astha] – Project Lead / https://www.linkedin.com/in/asthagudgilla/
-* [Federic] – Repo Manager 
+* [Frédéric] – Repo Manager 
 * [Brigi] – Data Engineer / https://www.linkedin.com/in/brigi-bodi/
 * [Esra] – Documentation & QA / https://www.linkedin.com/in/esra-mogulkoc-865b683a/
 
