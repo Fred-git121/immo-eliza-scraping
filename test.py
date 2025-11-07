@@ -1,6 +1,12 @@
 import requests, pandas as pd, re, random, csv
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
+# ---------------------------------------------------------
+# Function: get_random_headers()
+# Purpose: Returns a random User-Agent to avoid being
+# blocked by anti-bot security
+# ---------------------------------------------------------
 def get_random_headers():
     user_agents =[
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36',
@@ -10,10 +16,13 @@ def get_random_headers():
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15'
     ]
     return {"User-Agent": random.choice(user_agents)}
+# Initialize a random header for all requests
 headers = get_random_headers()
 
-# The columns that will be kept in the final file
-KEEP = [
+# ---------------------------------------------------------
+# List of columns that will be kept in the final CSV output
+# ---------------------------------------------------------
+COLUMNS_TO_KEEP = [
     "url",
     "Property ID",
     "Price",
@@ -40,46 +49,66 @@ KEEP = [
     "Terrace",
     "Surface terrace",
     "Total land surface",
-    "Swimming pool",
+    "Swimming pool"
 ]
 
+# ---------------------------------------------------------
+# 1. Read the list URLS from a CSV file
+# Each line in the CSV file should contain one URL
+# ---------------------------------------------------------
+input_csv_file = "property_urls.csv"
 
-# Read the list
-input_csv = "property_urls.csv"
-with open(input_csv, "r", encoding="utf-8") as f:
-    urls = []
-    for line in f:
-        line = line.strip()
-        if line:
-            urls.append(line)
+property_urls = []
+with open(input_csv_file, "r", encoding="utf-8") as file:
+    for line in file:
+        cleaned_line = line.strip()
+        if cleaned_line:
+            property_urls.append(cleaned_line)
 
-# Scrape every url
-all_specs = []
-for url in urls:
-    specs = {"url": url, "Property ID": url.rstrip("/").rsplit("/", 1)[-1]}
-    # Property ID = everything after the last "/"
-    soup = BeautifulSoup(requests.get(url,headers=headers).text, "html.parser")
+# ---------------------------------------------------------
+# 2. Loop through each property URL and scrape details
+# ---------------------------------------------------------
+all_property_data = []
+for property_url in tqdm(property_urls, desc="Scraping"):
+    # Initialize a dictionary to store all scraped specs
+    property_data = {"url": property_url}
 
+    # Extract Property ID (the last part of the URL)
+    property_data["Property ID"] = property_url.rstrip("/").rsplit("/", 1)[-1]
 
-    for li in soup.select("ul li"):
-        txt = li.get_text(strip=True)
-        price_table = re.match(r"^(.+?):\s*(.+)$", txt)
-        if price_table:
-            price_header = price_table.group(1)
-            price_value = price_table.group(2)
-            specs[price_header] = price_value
+    # Fetch the webpage content
+    response = requests.get(property_url, headers=headers)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, "html.parser")
 
-    for h4 in soup.select("h4"):
-        p = h4.find_next("p")
-        if p:
-            if h4.get_text(strip=True) in KEEP:
-                specs[h4.get_text(strip=True)] = p.get_text(strip=True)
+    # -----------------------------------------------------
+    # Extract <ul><li> pairs formatted as "Label: Value
+    # -----------------------------------------------------
+    for list_item in soup.select("ul li"):
+        text = list_item.get_text(strip=True)
+        match = re.match(r"^(.+?):\s*(.+)$", text)
+        if match:
+            field_name = match.group(1)
+            price_value = match.group(2)
+            property_data[field_name] = price_value
 
-    all_specs.append(specs)
+    # -----------------------------------------------------
+    # Extract <h4>Field name</h4><p>Field value</p> pairs
+    # Only keep fields that are in COLUMNS_TO_KEEP
+    # -----------------------------------------------------
+    for field_heading in soup.select("h4"):
+        field_value_element = field_heading.find_next("p")
+        if field_value_element:
+            field_name = field_heading.get_text(strip=True)
+            if field_name in COLUMNS_TO_KEEP:
+                property_data[field_name] = field_value_element.get_text(strip=True)
 
-    #for k, v in specs.items():
-    #    if k in KEEP:
-    #        print(f"{k}: {v}")
+    # Add the property specs to the main list
+    all_property_data.append(property_data)
 
-df = pd.DataFrame(all_specs)
-df.to_csv("immovlan_final_file.csv", index=False)
+# ---------------------------------------------------------
+# 3. Convert collected data into a DataFrame and export CSV
+# ---------------------------------------------------------
+output_csv_file = "immovlan_final_file.csv"
+df = pd.DataFrame(all_property_data)
+df.to_csv(output_csv_file, index=False)
