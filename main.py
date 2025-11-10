@@ -96,7 +96,7 @@ def get_page(page, params_dict, label):
     print(f"{label} page {page} → {len(links)} links")
     return links
 
-# --------------- 3. SCRAPER -------------------------
+# --------------- 3. SCRAPE URLS -------------------------
 MAX_SITE_PAGES = 50
 
 def scrape_category(params_dict, label):
@@ -121,10 +121,7 @@ df = pd.DataFrame(all_links, columns=["url", "province"]).drop_duplicates(subset
 df.to_csv("immovlan_sale.csv", index=False)
 print(f"\nTotal unique links collected: {len(df)}")
 
-# ============================================================
-# ************ NEW: EXPAND PROJECTS ************
-# ============================================================
-
+# --------------- 6. EXPAND PROJECTS -----------------------------------
 def expand_projects(property_urls):
     """
     Take a list of URLs and expand any project URLs into individual properties
@@ -193,10 +190,7 @@ def expand_projects(property_urls):
     
     return list(expanded_urls)
 
-# ============================================================
-# ************ CONTINUE WITH EXISTING CODE ************
-# ============================================================
-
+# --------------- 7. SCRAPE PROPERTIES -----------------------------------
 def scrape_property_details(url):
     if url.startswith("/"):
         url = "https://www.immovlan.be" + url
@@ -225,7 +219,7 @@ if __name__ == "__main__":
     property_urls = [url for url, _ in all_links]
     print(f"\nInitial URLs collected: {len(property_urls)}")
     
-    # *** NEW STEP 2: Expand projects into individual properties ***
+    # STEP 2: Expand projects into individual properties ***
     print("\n" + "="*60)
     print("EXPANDING PROJECTS...")
     print("="*60)
